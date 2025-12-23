@@ -13,7 +13,7 @@ from datasets import load_dataset
 
 router = APIRouter()
 
-# ---------------- SCHEMA ----------------
+
 class FinetuneParams(BaseModel):
     epochs: int = Field(2, ge=1, le=10)
     learning_rate: float = Field(2e-4, ge=1e-5, le=5e-4)
@@ -26,7 +26,6 @@ class FinetuneParams(BaseModel):
     lora_dropout: float = Field(0.05, ge=0.0, le=0.3)
 
 
-# ---------------- HELPERS ----------------
 def attach_lora(model, params: FinetuneParams):
     config = LoraConfig(
         r=params.lora_r,
@@ -40,11 +39,11 @@ def attach_lora(model, params: FinetuneParams):
 
 
 def tokenize_dataset(tokenizer, dataset_path, max_length):
-    dataset = load_dataset("json", data_files=dataset_path)
+    dataset = load_dataset("json", data_files=dataset_path, field="texts")
 
     def tokenize(example):
         tokens = tokenizer(
-            example["texts"],
+            example["text"],
             truncation=True,
             max_length=max_length,
             padding="max_length"
@@ -52,10 +51,11 @@ def tokenize_dataset(tokenizer, dataset_path, max_length):
         tokens["labels"] = tokens["input_ids"].copy()
         return tokens
 
-    return dataset.map(tokenize, remove_columns=["texts"])
+    return dataset.map(tokenize, remove_columns=["text"])
+    
 
 
-# ---------------- API ----------------
+
 @router.post("/finetune")
 async def finetune_model(model_name: str, params: FinetuneParams):
     try:
@@ -79,10 +79,11 @@ async def finetune_model(model_name: str, params: FinetuneParams):
         tokenizer.pad_token = tokenizer.eos_token
 
         model = AutoModelForCausalLM.from_pretrained(
-            str(model_path),
-            torch_dtype=torch.float16,
-            device_map="auto"
+        str(model_path),
+        torch_dtype=torch.float16
         )
+
+        model.to("cuda")
 
         # ---- Attach LoRA ----
         model = attach_lora(model, params)
@@ -117,10 +118,10 @@ async def finetune_model(model_name: str, params: FinetuneParams):
             train_dataset=dataset["train"]
         )
 
-        # ---- Train ----
+        
         trainer.train()
 
-        # ---- Save adapter ----
+
         model.save_pretrained(output_dir)
         tokenizer.save_pretrained(output_dir)
 
