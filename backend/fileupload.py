@@ -7,9 +7,30 @@ import json
 router = APIRouter()
 
 
+def extract_text_only(doc_json):
+    texts = []
+
+    def walk(node):
+        if isinstance(node, dict):
+            if "text" in node and isinstance(node["text"], str):
+                t = node["text"].strip()
+                if t:
+                    texts.append({"text": t})
+
+            for v in node.values():
+                walk(v)
+
+        elif isinstance(node, list):
+            for item in node:
+                walk(item)
+
+        # ignore strings, numbers, None
+
+    walk(doc_json)
+    return {"texts": texts}
+
+
 @router.post("/upload-large")
-
-
 async def upload_large_file(file: UploadFile = File(...)):
     uploaded_filename = f"uploaded_{file.filename}"
 
@@ -23,21 +44,27 @@ async def upload_large_file(file: UploadFile = File(...)):
         converter = DocumentConverter()
         result = converter.convert(uploaded_filename)
 
-        # 3. Export Docling document to JSON-compatible dict
-        doc_json = result.document.export_to_dict()
+        # 3. Export Docling document to dict
+        raw_doc = result.document.export_to_dict()
 
-        # 4. Save JSON
+        # 4. Extract only text
+        clean_doc = extract_text_only(raw_doc)
+
+        # 5. Save clean JSON
         output_path = Path("output.json")
         with open(output_path, "w", encoding="utf-8") as f:
-            json.dump(doc_json, f, indent=2, ensure_ascii=False)
+            json.dump(clean_doc, f, indent=2, ensure_ascii=False)
+
+        # 6. Cleanup
         os.remove(uploaded_filename)
 
         return {
             "filename": file.filename,
             "status": "converted",
             "output_file": str(output_path),
+            "text_blocks": len(clean_doc["texts"]),
             "size": output_path.stat().st_size
         }
 
     except Exception as e:
-       raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e))
