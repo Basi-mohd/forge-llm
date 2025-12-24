@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Query
 from huggingface_hub import snapshot_download
 from pathlib import Path
 
@@ -6,7 +6,7 @@ router = APIRouter()
 
 
 @router.post("/download-model")
-async def download_model(model_name: str):
+async def download_model(model_name: str = Query(...)):
     try:
         models_dir = Path("../models")
         models_dir.mkdir(parents=True, exist_ok=True)
