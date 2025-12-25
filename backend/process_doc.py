@@ -31,10 +31,19 @@ async def upload_large_file(file: UploadFile = File(...)):
         print(f"Page {i}: {len(text)} characters")
         sentences = sent_tokenize(text)
         result =  make_json(sentences,'../models/Qwen/Qwen2-0.5B')
-        output+=result
-        print(output)
-    with open(f"training_data.json", "w") as json_file:
-        json.dump(output, json_file, indent=2)
+
+        
+        pattern = re.compile(
+            r'["\']question["\']\s*:\s*["\'](.*?)["\']\s*,\s*["\']answer["\']\s*:\s*["\'](.*?)["\']',
+            re.DOTALL
+        )
+        with open(f"training_data.jsonl", "w") as json_file:
+            for q, a in pattern.findall(result):
+            record = {
+                "instruction": q.strip(),
+                "output": a.strip()
+            }
+            f.write(json.dumps(record, ensure_ascii=False) + "\n")
 
 
 # Convert to LoRA format and save as JSONL
