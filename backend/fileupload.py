@@ -45,18 +45,12 @@ async def upload_large_file(file: UploadFile = File(...)):
         result = converter.convert(uploaded_filename)
 
         # 3. Export Docling document to dict
-        raw_doc = result.document.export_to_dict()
+        raw_doc = result.document.export_to_markdown()
 
         # 4. Extract only text
-        clean_doc = extract_text_only(raw_doc)
-
-        # 5. Save clean JSON
-        output_path = Path("output.json")
-        with open(output_path, "w", encoding="utf-8") as f:
-            json.dump(clean_doc, f, indent=2, ensure_ascii=False)
-
-        # 6. Cleanup
-        os.remove(uploaded_filename)
+        output_path = Path("output.md")
+        output_path.write_text(raw_doc)
+        clean_doc = extract_text_only(result.document.export_to_dict())
 
         return {
             "filename": file.filename,

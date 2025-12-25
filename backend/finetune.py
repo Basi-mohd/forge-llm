@@ -10,6 +10,7 @@ from pathlib import Path
 from pydantic import BaseModel, Field
 from peft import LoraConfig, get_peft_model
 from datasets import load_dataset
+from usingthemodel import load_and_merge_model
 
 router = APIRouter()
 
@@ -60,7 +61,7 @@ def tokenize_dataset(tokenizer, dataset_path, max_length):
 async def finetune_model(model_name: str, params: FinetuneParams):
     try:
         model_path = Path(f"../models/{model_name}")
-        dataset_path = Path("./output.json")  # produced by Docling
+        dataset_path = Path("./training_data.json")  # produced by Docling
 
         if not model_path.exists():
             raise HTTPException(
@@ -74,7 +75,7 @@ async def finetune_model(model_name: str, params: FinetuneParams):
                 detail="Dataset not found. Upload document first."
             )
 
-        # ---- Load tokenizer & model ----
+    
         tokenizer = AutoTokenizer.from_pretrained(str(model_path))
         tokenizer.pad_token = tokenizer.eos_token
 
@@ -85,18 +86,18 @@ async def finetune_model(model_name: str, params: FinetuneParams):
 
         model.to("cuda")
 
-        # ---- Attach LoRA ----
+    
         model = attach_lora(model, params)
         model.print_trainable_parameters()
 
-        # ---- Dataset ----
+
         dataset = tokenize_dataset(
             tokenizer,
             str(dataset_path),
             params.max_length
         )
 
-        # ---- Training args ----
+        
         output_dir = f"../models/adapters/{model_name}-docling"
 
         training_args = TrainingArguments(
@@ -124,6 +125,8 @@ async def finetune_model(model_name: str, params: FinetuneParams):
 
         model.save_pretrained(output_dir)
         tokenizer.save_pretrained(output_dir)
+        load_and_merge_model(base_model_path=str(model_path), lora_path=output_dir)
+
 
         return {
             "status": "finetuning_completed",
