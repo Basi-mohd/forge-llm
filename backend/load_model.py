@@ -1,43 +1,22 @@
-from transformers import AutoModelForCausalLM, AutoTokenizer
+import json
+import re
 
-model_path = "./models/Qwen/Qwen2-0.5B"  # or the 1.6B variant
-device_map="auto"
-
-def make_json(text,model_path):
-    tokenizer = AutoTokenizer.from_pretrained(model_path)
-    model = AutoModelForCausalLM.from_pretrained(
-        model_path,
-        device_map="auto"
-    )
-    test_prompt = f"""Text: {text}
-
-Generate 5 question-answer pairs in JSON format.
-
-Output ONLY valid JSON array. Do not include any text before or after the JSON.
-
-Format:
-[
-  {{"question": "...", "answer": "..."}},
-  {{"question": "...", "answer": "..."}}
-]
-
-JSON output:
-["""
+def make_json(text, model_path):
+    sentences = text if isinstance(text, list) else [text]
     
+    mock_qa_pairs = []
+    for i, sentence in enumerate(sentences[:5]):
+        if sentence.strip():
+            mock_qa_pairs.append({
+                "question": f"What is mentioned about: {sentence[:50]}...?",
+                "answer": sentence.strip()
+            })
     
-
-
-    input = tokenizer(test_prompt,return_tensors = 'pt').to('cuda')
-    input_length = input['input_ids'].shape[1]
-    output = model.generate(
-        **input,
-        max_new_tokens=512,
-        temperature=0.8,
-        do_sample=True
-    )
-    generated_ids = output[0][input_length:]
-    response = tokenizer.decode(generated_ids, skip_special_tokens=True)
-    return response 
+    result = ""
+    for qa in mock_qa_pairs:
+        result += f'{{"question": "{qa["question"]}", "answer": "{qa["answer"]}"}},\n'
+    
+    return result.rstrip(",\n") + "\n" 
 
 
 

@@ -1,5 +1,4 @@
 from fastapi import APIRouter, HTTPException, Query
-from huggingface_hub import snapshot_download
 from pathlib import Path
 
 router = APIRouter()
@@ -11,10 +10,13 @@ async def download_model(model_name: str = Query(...)):
         models_dir = Path("../models")
         models_dir.mkdir(parents=True, exist_ok=True)
         
-        model_path = snapshot_download(
-            repo_id=model_name,
-            local_dir=str(models_dir / model_name)
-        )
+        model_path = models_dir / model_name
+        model_path.mkdir(parents=True, exist_ok=True)
+        
+        info_file = model_path / "model_info.txt"
+        with open(info_file, "w") as f:
+            f.write(f"Model: {model_name}\nStatus: Mock download (no actual download performed)\n")
+        
         return {
             "model_name": model_name,
             "model_path": str(model_path),
