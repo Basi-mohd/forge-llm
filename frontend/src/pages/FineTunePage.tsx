@@ -19,6 +19,9 @@ export function FineTunePage({ models, onJobCreate }: FineTunePageProps) {
   const [isUploaded, setIsUploaded] = useState(false);
   const [isTraining, setIsTraining] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
+  const [currentPage, setCurrentPage] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
+  const [isProcessing, setIsProcessing] = useState(false);
   const [params, setParams] = useState<FineTuneParams>({
     epochs: 2,
     learning_rate: 0.0002,
@@ -36,6 +39,9 @@ export function FineTunePage({ models, onJobCreate }: FineTunePageProps) {
       setIsUploaded(false);
       setUploadProgress(0);
       setUploadError(null);
+      setCurrentPage(0);
+      setTotalPages(0);
+      setIsProcessing(false);
     }
   };
 
@@ -43,20 +49,34 @@ export function FineTunePage({ models, onJobCreate }: FineTunePageProps) {
     if (!trainingFile) return;
 
     setIsUploading(true);
+    setIsProcessing(true);
     setUploadProgress(0);
     setUploadError(null);
+    setCurrentPage(0);
+    setTotalPages(0);
 
     try {
-      await apiService.processDocument(trainingFile, (progress) => {
-        setUploadProgress(progress);
-      });
+      await apiService.processDocument(
+        trainingFile,
+        (progress) => {
+          setUploadProgress(progress);
+        },
+        (page, total) => {
+          setCurrentPage(page);
+          setTotalPages(total);
+        }
+      );
       setIsUploaded(true);
       setIsUploading(false);
+      setIsProcessing(false);
     } catch (error) {
       console.error('Error uploading file:', error);
       setUploadError('Failed to upload file. Please try again.');
       setIsUploading(false);
+      setIsProcessing(false);
       setUploadProgress(0);
+      setCurrentPage(0);
+      setTotalPages(0);
     }
   };
 
@@ -76,6 +96,8 @@ export function FineTunePage({ models, onJobCreate }: FineTunePageProps) {
       setIsUploaded(false);
       setUploadProgress(0);
       setIsTraining(false);
+      setCurrentPage(0);
+      setTotalPages(0);
     } catch (error) {
       console.error('Error starting fine-tuning:', error);
       alert('Failed to start fine-tuning job. Please try again.');
@@ -111,18 +133,44 @@ export function FineTunePage({ models, onJobCreate }: FineTunePageProps) {
               </div>
             </div>
 
-            {isUploading && (
-              <div className="space-y-2">
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground">Uploading...</span>
-                  <span className="text-foreground font-medium">{uploadProgress}%</span>
-                </div>
-                <div className="w-full bg-muted rounded-full h-2">
-                  <div
-                    className="bg-primary h-2 rounded-full transition-all duration-300"
-                    style={{ width: `${uploadProgress}%` }}
-                  />
-                </div>
+            {(isUploading || isProcessing) && (
+              <div className="space-y-4">
+                {isUploading && uploadProgress < 100 && (
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-muted-foreground">Uploading file...</span>
+                      <span className="text-foreground font-medium">{uploadProgress}%</span>
+                    </div>
+                    <div className="w-full bg-muted rounded-full h-2">
+                      <div
+                        className="bg-primary h-2 rounded-full transition-all duration-300"
+                        style={{ width: `${uploadProgress}%` }}
+                      />
+                    </div>
+                  </div>
+                )}
+                {isProcessing && totalPages > 0 && (
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-muted-foreground">
+                        Processing pages...
+                      </span>
+                      <span className="text-foreground font-medium">
+                        {currentPage} / {totalPages}
+                      </span>
+                    </div>
+                    <div className="w-full bg-muted rounded-full h-2">
+                      <div
+                        className="bg-primary h-2 rounded-full transition-all duration-300"
+                        style={{ 
+                          width: totalPages > 0 
+                            ? `${(currentPage / totalPages) * 100}%` 
+                            : '0%' 
+                        }}
+                      />
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 
