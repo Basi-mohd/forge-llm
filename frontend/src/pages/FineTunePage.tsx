@@ -237,7 +237,7 @@ export function FineTunePage({ models, onJobCreate }: FineTunePageProps) {
                     max="10"
                     value={params.epochs}
                     onChange={(e) =>
-                      setParams({ ...params, epochs: parseInt(e.target.value) })
+                      setParams({ ...params, epochs: parseInt(e.target.value) || 0 })
                     }
                     disabled={isTraining}
                   />
@@ -252,7 +252,7 @@ export function FineTunePage({ models, onJobCreate }: FineTunePageProps) {
                     max="8"
                     value={params.batch_size}
                     onChange={(e) =>
-                      setParams({ ...params, batch_size: parseInt(e.target.value) })
+                      setParams({ ...params, batch_size: parseInt(e.target.value) || 0 })
                     }
                     disabled={isTraining}
                   />
@@ -268,7 +268,83 @@ export function FineTunePage({ models, onJobCreate }: FineTunePageProps) {
                     max="0.0005"
                     value={params.learning_rate}
                     onChange={(e) =>
-                      setParams({ ...params, learning_rate: parseFloat(e.target.value) })
+                      setParams({ ...params, learning_rate: parseFloat(e.target.value) || 0 })
+                    }
+                    disabled={isTraining}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="gradient_accumulation">Gradient Accumulation</Label>
+                  <Input
+                    id="gradient_accumulation"
+                    type="number"
+                    min="1"
+                    max="32"
+                    value={params.gradient_accumulation}
+                    onChange={(e) =>
+                      setParams({ ...params, gradient_accumulation: parseInt(e.target.value) || 0 })
+                    }
+                    disabled={isTraining}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="max_length">Max Length</Label>
+                  <Input
+                    id="max_length"
+                    type="number"
+                    min="256"
+                    max="4096"
+                    value={params.max_length}
+                    onChange={(e) =>
+                      setParams({ ...params, max_length: parseInt(e.target.value) || 0 })
+                    }
+                    disabled={isTraining}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="lora_r">LoRA R</Label>
+                  <Input
+                    id="lora_r"
+                    type="number"
+                    min="4"
+                    max="64"
+                    value={params.lora_r}
+                    onChange={(e) =>
+                      setParams({ ...params, lora_r: parseInt(e.target.value) || 0 })
+                    }
+                    disabled={isTraining}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="lora_alpha">LoRA Alpha</Label>
+                  <Input
+                    id="lora_alpha"
+                    type="number"
+                    min="8"
+                    max="128"
+                    value={params.lora_alpha}
+                    onChange={(e) =>
+                      setParams({ ...params, lora_alpha: parseInt(e.target.value) || 0 })
+                    }
+                    disabled={isTraining}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="lora_dropout">LoRA Dropout</Label>
+                  <Input
+                    id="lora_dropout"
+                    type="number"
+                    step="0.01"
+                    min="0.0"
+                    max="0.3"
+                    value={params.lora_dropout}
+                    onChange={(e) =>
+                      setParams({ ...params, lora_dropout: parseFloat(e.target.value) || 0 })
                     }
                     disabled={isTraining}
                   />

@@ -2,25 +2,24 @@ import { useState, useRef, useEffect } from 'react';
 import { Send, Loader2, User, Bot } from 'lucide-react';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
+import { Select } from './ui/select';
 import { ChatMessage } from '../types';
 import { apiService } from '@/lib/api';
 
 interface ChatInterfaceProps {
   messages: ChatMessage[];
   selectedModel: string;
-  models: string[];
+  fineTunedModels: string[];
   onModelChange: (model: string) => void;
   onMessageAdd: (message: ChatMessage) => void;
-  onAddModel: (modelName: string) => void;
 }
 
 export function ChatInterface({
   messages,
   selectedModel,
-  models,
+  fineTunedModels,
   onModelChange,
   onMessageAdd,
-  onAddModel,
 }: ChatInterfaceProps) {
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -140,13 +139,25 @@ export function ChatInterface({
 
       <div className="border-t border-border p-4 bg-background">
         <form onSubmit={handleSubmit} className="max-w-4xl mx-auto flex gap-2">
-          <Input
+          <Select
             value={selectedModel}
             onChange={(e) => onModelChange(e.target.value)}
-            placeholder="Enter model name"
             className="w-48"
             disabled={isLoading}
-          />
+          >
+            {fineTunedModels.length === 0 ? (
+              <option value="">No models available</option>
+            ) : (
+              fineTunedModels.map((model) => (
+                <option key={model} value={model}>
+                  {model}
+                </option>
+              ))
+            )}
+            {selectedModel && !fineTunedModels.includes(selectedModel) && (
+              <option value={selectedModel}>{selectedModel}</option>
+            )}
+          </Select>
           <Input
             value={input}
             onChange={(e) => setInput(e.target.value)}

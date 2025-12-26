@@ -61,7 +61,7 @@ function App() {
   };
 
   const handleMessagesUpdate = (chatId: string, messages: ChatMessage[]) => {
-    setChats(chats.map(chat => 
+    setChats(prevChats => prevChats.map(chat => 
       chat.id === chatId ? { ...chat, messages } : chat
     ));
   };
@@ -97,12 +97,11 @@ function App() {
         ) : (
           <ChatPage
             chat={activeChat || null}
-            models={models}
+            jobs={jobs}
             selectedModel={selectedModel}
             onModelChange={setSelectedModel}
             onMessagesUpdate={handleMessagesUpdate}
             onChatModelUpdate={handleChatModelUpdate}
-            onAddModel={handleAddModel}
           />
         )}
       </div>

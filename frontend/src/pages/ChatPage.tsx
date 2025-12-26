@@ -1,28 +1,36 @@
+import { useEffect, useRef } from 'react';
 import { ChatInterface } from '../components/ChatInterface';
-import { Chat, ChatMessage } from '../types';
+import { Chat, ChatMessage, FineTuneJob } from '../types';
 
 interface ChatPageProps {
   chat: Chat | null;
-  models: string[];
+  jobs: FineTuneJob[];
   selectedModel: string;
   onModelChange: (model: string) => void;
   onMessagesUpdate: (chatId: string, messages: ChatMessage[]) => void;
   onChatModelUpdate: (chatId: string, model: string) => void;
-  onAddModel: (modelName: string) => void;
 }
 
 export function ChatPage({
   chat,
-  models,
+  jobs,
   selectedModel,
   onModelChange,
   onMessagesUpdate,
   onChatModelUpdate,
-  onAddModel,
 }: ChatPageProps) {
+  const messagesRef = useRef<ChatMessage[]>([]);
+
+  useEffect(() => {
+    if (chat) {
+      messagesRef.current = chat.messages;
+    }
+  }, [chat?.messages]);
+
   const handleMessageAdd = (message: ChatMessage) => {
     if (chat) {
-      const updatedMessages = [...chat.messages, message];
+      const updatedMessages = [...messagesRef.current, message];
+      messagesRef.current = updatedMessages;
       onMessagesUpdate(chat.id, updatedMessages);
     }
   };
@@ -35,6 +43,7 @@ export function ChatPage({
   };
 
   const currentModel = chat?.model || selectedModel;
+  const fineTunedModels = Array.from(new Set(jobs.map(job => job.modelName)));
 
   if (!chat) {
     return (
@@ -55,10 +64,9 @@ export function ChatPage({
     <ChatInterface
       messages={chat.messages}
       selectedModel={currentModel}
-      models={models}
+      fineTunedModels={fineTunedModels}
       onModelChange={handleModelChange}
       onMessageAdd={handleMessageAdd}
-      onAddModel={onAddModel}
     />
   );
 }

@@ -26,11 +26,11 @@ export interface FineTuneParams {
   epochs: number;
   learning_rate: number;
   batch_size: number;
-  gradient_accumulation?: number;
-  max_length?: number;
-  lora_r?: number;
-  lora_alpha?: number;
-  lora_dropout?: number;
+  gradient_accumulation: number;
+  max_length: number;
+  lora_r: number;
+  lora_alpha: number;
+  lora_dropout: number;
 }
 
 export interface Model {
