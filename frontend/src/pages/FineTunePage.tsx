@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Upload, Loader2, CheckCircle2 } from 'lucide-react';
+import { useState, useEffect, useCallback } from 'react';
+import { Upload, Loader2, CheckCircle2, Download, AlertCircle } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
@@ -11,7 +11,7 @@ interface FineTunePageProps {
   onJobCreate: (jobName: string, modelName: string, params: FineTuneParams) => void;
 }
 
-export function FineTunePage({ models, onJobCreate }: FineTunePageProps) {
+export function FineTunePage({ models: _models, onJobCreate }: FineTunePageProps) {
   const [selectedModel, setSelectedModel] = useState('');
   const [trainingFile, setTrainingFile] = useState<File | null>(null);
   const [uploadProgress, setUploadProgress] = useState(0);
@@ -22,6 +22,11 @@ export function FineTunePage({ models, onJobCreate }: FineTunePageProps) {
   const [currentPage, setCurrentPage] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [modelExists, setModelExists] = useState<boolean | null>(null);
+  const [isCheckingModel, setIsCheckingModel] = useState(false);
+  const [isDownloading, setIsDownloading] = useState(false);
+  const [downloadError, setDownloadError] = useState<string | null>(null);
+  const [downloadSuccess, setDownloadSuccess] = useState(false);
   const [params, setParams] = useState<FineTuneParams>({
     epochs: 2,
     learning_rate: 0.0002,
@@ -80,8 +85,74 @@ export function FineTunePage({ models, onJobCreate }: FineTunePageProps) {
     }
   };
 
+  const checkModelExists = useCallback(async (modelName: string) => {
+    if (!modelName.trim()) {
+      setModelExists(null);
+      return;
+    }
+
+    setIsCheckingModel(true);
+    try {
+      const result = await apiService.checkModel(modelName);
+      setModelExists(result.exists);
+      setDownloadError(null);
+      setDownloadSuccess(false);
+    } catch (error) {
+      console.error('Error checking model:', error);
+      setModelExists(false);
+    } finally {
+      setIsCheckingModel(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      if (selectedModel) {
+        checkModelExists(selectedModel);
+      } else {
+        setModelExists(null);
+      }
+    }, 500);
+
+    return () => clearTimeout(timeoutId);
+  }, [selectedModel, checkModelExists]);
+
+  const handleDownloadModel = async () => {
+    if (!selectedModel.trim()) return;
+
+    setIsDownloading(true);
+    setDownloadError(null);
+    setDownloadSuccess(false);
+
+    try {
+      await apiService.downloadModel(selectedModel);
+      setDownloadSuccess(true);
+      setModelExists(true);
+    } catch (error: any) {
+      console.error('Error downloading model:', error);
+      setDownloadError(
+        error.response?.data?.detail || 'Failed to download model. Please try again.'
+      );
+    } finally {
+      setIsDownloading(false);
+    }
+  };
+
   const handleStartTraining = async () => {
     if (!selectedModel) return;
+
+    if (modelExists === false) {
+      setDownloadError('Please download the model first before starting fine-tuning.');
+      return;
+    }
+
+    if (modelExists === null) {
+      await checkModelExists(selectedModel);
+      if (modelExists === false) {
+        setDownloadError('Please download the model first before starting fine-tuning.');
+        return;
+      }
+    }
 
     setIsTraining(true);
     try {
@@ -217,14 +288,70 @@ export function FineTunePage({ models, onJobCreate }: FineTunePageProps) {
 
               <div className="space-y-2">
                 <Label htmlFor="model">Model</Label>
-                <Input
-                  id="model"
-                  type="text"
-                  value={selectedModel}
-                  onChange={(e) => setSelectedModel(e.target.value)}
-                  disabled={isTraining}
-                  placeholder="Enter model name"
-                />
+                <div className="flex items-center gap-2">
+                  <Input
+                    id="model"
+                    type="text"
+                    value={selectedModel}
+                    onChange={(e) => setSelectedModel(e.target.value)}
+                    disabled={isTraining || isDownloading}
+                    placeholder="Enter model name (e.g., Qwen/Qwen2-0.5B)"
+                    className="flex-1"
+                  />
+                  {isCheckingModel && (
+                    <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
+                  )}
+                </div>
+                {selectedModel && modelExists === false && (
+                  <div className="space-y-3 p-4 border border-yellow-500/50 bg-yellow-500/10 rounded-lg">
+                    <div className="flex items-start gap-2">
+                      <AlertCircle className="w-5 h-5 text-yellow-500 mt-0.5" />
+                      <div className="flex-1">
+                        <p className="text-sm text-yellow-600 dark:text-yellow-400 font-medium">
+                          Model not found
+                        </p>
+                        <p className="text-sm text-muted-foreground mt-1">
+                          The model "{selectedModel}" does not exist locally. Please download it from HuggingFace Hub first.
+                        </p>
+                      </div>
+                    </div>
+                    <Button
+                      onClick={handleDownloadModel}
+                      disabled={isDownloading || isTraining}
+                      className="w-full"
+                      size="lg"
+                    >
+                      {isDownloading ? (
+                        <>
+                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                          Downloading...
+                        </>
+                      ) : (
+                        <>
+                          <Download className="w-4 h-4 mr-2" />
+                          Download Model
+                        </>
+                      )}
+                    </Button>
+                    {downloadSuccess && (
+                      <div className="flex items-center gap-2 text-sm text-green-500">
+                        <CheckCircle2 className="w-4 h-4" />
+                        <span>Model downloaded successfully!</span>
+                      </div>
+                    )}
+                    {downloadError && (
+                      <div className="text-sm text-red-500">
+                        {downloadError}
+                      </div>
+                    )}
+                  </div>
+                )}
+                {selectedModel && modelExists === true && (
+                  <div className="flex items-center gap-2 text-sm text-green-500">
+                    <CheckCircle2 className="w-4 h-4" />
+                    <span>Model is available</span>
+                  </div>
+                )}
               </div>
 
               <div className="grid grid-cols-2 gap-4">

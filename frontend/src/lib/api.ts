@@ -32,6 +32,16 @@ export const apiService = {
     return response.data;
   },
 
+  checkModel: async (modelName: string) => {
+    const response = await api.get(`/check-model?model_name=${encodeURIComponent(modelName)}`);
+    return response.data;
+  },
+
+  downloadModel: async (modelName: string) => {
+    const response = await api.post(`/download-model?model_name=${encodeURIComponent(modelName)}`);
+    return response.data;
+  },
+
   processDocument: async (
     file: File,
     onProgress?: (progress: number) => void,
