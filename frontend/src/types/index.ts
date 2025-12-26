@@ -1,31 +1,40 @@
-export type JobStatus = 'queued' | 'running' | 'completed' | 'failed';
-
-export interface FineTuningJob {
+export interface FineTuneJob {
   id: string;
   name: string;
-  status: JobStatus;
-  createdAt: Date;
-  modelName?: string;
+  status: 'pending' | 'running' | 'completed' | 'failed';
+  modelName: string;
+  createdAt: string;
+  completedAt?: string;
+}
+
+export interface ChatMessage {
+  id: string;
+  role: 'user' | 'assistant';
+  content: string;
+  timestamp: string;
+}
+
+export interface Chat {
+  id: string;
+  name: string;
+  messages: ChatMessage[];
+  model: string;
+  createdAt: string;
+}
+
+export interface FineTuneParams {
+  epochs: number;
+  learning_rate: number;
+  batch_size: number;
+  gradient_accumulation?: number;
+  max_length?: number;
+  lora_r?: number;
+  lora_alpha?: number;
+  lora_dropout?: number;
 }
 
 export interface Model {
-  id: string;
   name: string;
+  path: string;
 }
 
-export interface InferenceRequest {
-  modelId: string;
-  prompt: string;
-}
-
-export interface InferenceResponse {
-  response: string;
-}
-
-export interface FineTuneRequest {
-  trainingFile: File;
-  baseModelId: string;
-  epochs: number;
-  batchSize: number;
-  learningRate: number;
-}
