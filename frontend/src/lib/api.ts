@@ -12,7 +12,7 @@ const api = axios.create({
 
 export const apiService = {
   chat: async (model: string, prompt: string) => {
-    const response = await api.post('/prompting', { model_name: model, message: prompt });
+    const response = await api.post(`/prompting?model_name=${encodeURIComponent(model)}&message=${encodeURIComponent(prompt)}`);
     return { response: response.data };
   },
 
