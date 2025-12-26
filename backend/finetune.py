@@ -10,7 +10,7 @@ from pathlib import Path
 from pydantic import BaseModel, Field
 from peft import LoraConfig, get_peft_model
 from datasets import load_dataset
-from usingthemodel import load_and_merge_model
+from usingthemodel import merge_model
 
 router = APIRouter()
 
@@ -40,11 +40,12 @@ def attach_lora(model, params: FinetuneParams):
 
 
 def tokenize_dataset(tokenizer, dataset_path, max_length):
-    dataset = load_dataset("json", data_files=dataset_path, field="texts")
+    dataset = load_dataset("json", data_files=dataset_path)
 
     def tokenize(example):
+        text = f"{example['instruction']}\n{example['output']}"
         tokens = tokenizer(
-            example["text"],
+            text,
             truncation=True,
             max_length=max_length,
             padding="max_length"
@@ -52,7 +53,7 @@ def tokenize_dataset(tokenizer, dataset_path, max_length):
         tokens["labels"] = tokens["input_ids"].copy()
         return tokens
 
-    return dataset.map(tokenize, remove_columns=["text"])
+    return dataset.map(tokenize, remove_columns=["instruction", "output"])
     
 
 
@@ -61,7 +62,7 @@ def tokenize_dataset(tokenizer, dataset_path, max_length):
 async def finetune_model(model_name: str, params: FinetuneParams):
     try:
         model_path = Path(f"../models/{model_name}")
-        dataset_path = Path("./training_data.json")  # produced by Docling
+        dataset_path = Path("./training_data.jsonl")  # produced by Docling
 
         if not model_path.exists():
             raise HTTPException(
@@ -98,7 +99,7 @@ async def finetune_model(model_name: str, params: FinetuneParams):
         )
 
         
-        output_dir = f"../models/adapters/{model_name}-docling"
+        output_dir = f"../models/adapters/{model_name}"
 
         training_args = TrainingArguments(
             output_dir=output_dir,
@@ -125,7 +126,7 @@ async def finetune_model(model_name: str, params: FinetuneParams):
 
         model.save_pretrained(output_dir)
         tokenizer.save_pretrained(output_dir)
-        load_and_merge_model(base_model_path=str(model_path), lora_path=output_dir)
+        merge_model(model_name)
 
 
         return {
