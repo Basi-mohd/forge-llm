@@ -36,7 +36,7 @@ def prompting(model_name,message):
         output = model.generate(
             **inputs,
             max_new_tokens=200,
-            temperature=0.6,
+            temperature=0.8,
             top_p=0.9,
             do_sample=True,
             #repetition_penalty=1.1,

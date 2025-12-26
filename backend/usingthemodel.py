@@ -2,23 +2,42 @@ import torch
 from transformers import AutoModelForCausalLM, AutoTokenizer
 from peft import PeftModel
 from pathlib import Path
-import traceback
-import sys
-import json
+import os
 
 def merge_model(model_name):
     model_path = f'../models/{model_name}'
-    base_model = AutoModelForCausalLM.from_pretrained (
+    adapter_path = f'../models/adapters/{model_name}'
+    output_path = f'../merged_model/{model_name}'
+    offload_path = '../offload'
+    
+    # Create offload directory if it doesn't exist
+    os.makedirs(offload_path, exist_ok=True)
+    os.makedirs(output_path, exist_ok=True)
+    
+    print(f"Loading base model from: {model_path}")
+    base_model = AutoModelForCausalLM.from_pretrained(
         model_path,
-        device_map = 'auto',
-        offload_dir = '../offload'
-
+        torch_dtype=torch.float16,
+        device_map='auto',
+        offload_folder=offload_path,
+        offload_state_dict=True
     )
-    model = PeftModel.from_pretrained(base_model,f'../models/adapters/{model_name}')
+    
+    print(f"Loading LoRA adapter from: {adapter_path}")
+    model = PeftModel.from_pretrained(
+        base_model, 
+        adapter_path,
+        is_trainable=False
+    )
+    
+    print("Merging adapter with base model...")
     merged_model = model.merge_and_unload()
-    merged_model.save_pretrained(f'../merged_model/{model_name}')
-    tokenizer = AutoTokenizer.from_pretrained(f'../models/{model_name}')
-    tokenizer.save_pretrained(f"../merged_model/{model_name}")
-
-merge_model('stabilityai/stablelm-2-zephyr-1_6b')
-
+    
+    print(f"Saving merged model to: {output_path}")
+    merged_model.save_pretrained(output_path)
+    
+    print("Saving tokenizer...")
+    tokenizer = AutoTokenizer.from_pretrained(model_path)
+    tokenizer.save_pretrained(output_path)
+    
+    print("Merge complete!")
