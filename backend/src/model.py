@@ -30,9 +30,9 @@ def prompting(model_name, message):
     with torch.no_grad():
         output = model.generate(
             **inputs,
-            max_new_tokens=200,
-            temperature=0.8,
-            top_p=0.9,
+            max_new_tokens=300,
+            temperature=0.7,
+            top_p=0.8,
             do_sample=True,
             eos_token_id=tokenizer.eos_token_id,
             pad_token_id=tokenizer.eos_token_id,

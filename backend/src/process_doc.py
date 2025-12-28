@@ -9,7 +9,7 @@ import re
 router = APIRouter()
 
 
-async def process_document_stream(file: UploadFile):
+async def process_document_stream(file: UploadFile,model_name: str):
     uploaded_filename = f"../uploads/uploaded_{file.filename}"
     with open(uploaded_filename, "wb") as f:
         while chunk := await file.read(1024 * 1024):
@@ -28,7 +28,7 @@ async def process_document_stream(file: UploadFile):
         yield f"data: {json.dumps({'type': 'page_start', 'page': i + 1, 'total': total_pages})}\n\n"
         
         sentences = sent_tokenize(text)
-        result = make_json(sentences, '../../models/Qwen/Qwen2-0.5B')
+        result = make_json(sentences, f'../../models/{model_name}')
         output += result
         
         yield f"data: {json.dumps({'type': 'page_complete', 'page': i + 1, 'total': total_pages})}\n\n"
