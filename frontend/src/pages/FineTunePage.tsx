@@ -27,6 +27,12 @@ export function FineTunePage({ models: _models, onJobCreate }: FineTunePageProps
   const [isDownloading, setIsDownloading] = useState(false);
   const [downloadError, setDownloadError] = useState<string | null>(null);
   const [downloadSuccess, setDownloadSuccess] = useState(false);
+  const [processModelName, setProcessModelName] = useState('');
+  const [processModelExists, setProcessModelExists] = useState<boolean | null>(null);
+  const [isCheckingProcessModel, setIsCheckingProcessModel] = useState(false);
+  const [isDownloadingProcessModel, setIsDownloadingProcessModel] = useState(false);
+  const [processModelDownloadError, setProcessModelDownloadError] = useState<string | null>(null);
+  const [processModelDownloadSuccess, setProcessModelDownloadSuccess] = useState(false);
   const [params, setParams] = useState<FineTuneParams>({
     epochs: 2,
     learning_rate: 0.0002,
@@ -50,8 +56,78 @@ export function FineTunePage({ models: _models, onJobCreate }: FineTunePageProps
     }
   };
 
+  const checkProcessModelExists = useCallback(async (modelName: string) => {
+    if (!modelName.trim()) {
+      setProcessModelExists(null);
+      return;
+    }
+
+    setIsCheckingProcessModel(true);
+    try {
+      const result = await apiService.checkModel(modelName);
+      setProcessModelExists(result.exists);
+      setProcessModelDownloadError(null);
+      setProcessModelDownloadSuccess(false);
+    } catch (error) {
+      console.error('Error checking process model:', error);
+      setProcessModelExists(false);
+    } finally {
+      setIsCheckingProcessModel(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      if (processModelName) {
+        checkProcessModelExists(processModelName);
+      } else {
+        setProcessModelExists(null);
+      }
+    }, 500);
+
+    return () => clearTimeout(timeoutId);
+  }, [processModelName, checkProcessModelExists]);
+
+  const handleDownloadProcessModel = async () => {
+    if (!processModelName.trim()) return;
+
+    setIsDownloadingProcessModel(true);
+    setProcessModelDownloadError(null);
+    setProcessModelDownloadSuccess(false);
+
+    try {
+      await apiService.downloadModel(processModelName);
+      setProcessModelDownloadSuccess(true);
+      setProcessModelExists(true);
+    } catch (error: any) {
+      console.error('Error downloading process model:', error);
+      setProcessModelDownloadError(
+        error.response?.data?.detail || 'Failed to download model. Please try again.'
+      );
+    } finally {
+      setIsDownloadingProcessModel(false);
+    }
+  };
+
   const handleFileUpload = async () => {
     if (!trainingFile) return;
+    if (!processModelName.trim()) {
+      setUploadError('Please enter a model name before uploading.');
+      return;
+    }
+
+    if (processModelExists === false) {
+      setUploadError('Please download the model first before processing the document.');
+      return;
+    }
+
+    if (processModelExists === null) {
+      await checkProcessModelExists(processModelName);
+      if (processModelExists === false) {
+        setUploadError('Please download the model first before processing the document.');
+        return;
+      }
+    }
 
     setIsUploading(true);
     setIsProcessing(true);
@@ -63,6 +139,7 @@ export function FineTunePage({ models: _models, onJobCreate }: FineTunePageProps
     try {
       await apiService.processDocument(
         trainingFile,
+        processModelName,
         (progress) => {
           setUploadProgress(progress);
         },
@@ -186,6 +263,74 @@ export function FineTunePage({ models: _models, onJobCreate }: FineTunePageProps
         <div className="space-y-8">
           <div className="space-y-4">
             <div className="space-y-2">
+              <Label htmlFor="process_model">Model for Document Processing</Label>
+              <div className="flex items-center gap-2">
+                <Input
+                  id="process_model"
+                  type="text"
+                  value={processModelName}
+                  onChange={(e) => setProcessModelName(e.target.value)}
+                  disabled={isUploading || isUploaded || isDownloadingProcessModel}
+                  placeholder="Enter model name (e.g., Qwen/Qwen2-0.5B)"
+                  className="flex-1"
+                />
+                {isCheckingProcessModel && (
+                  <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
+                )}
+              </div>
+              {processModelName && processModelExists === false && (
+                <div className="space-y-3 p-4 border border-yellow-500/50 bg-yellow-500/10 rounded-lg">
+                  <div className="flex items-start gap-2">
+                    <AlertCircle className="w-5 h-5 text-yellow-500 mt-0.5" />
+                    <div className="flex-1">
+                      <p className="text-sm text-yellow-600 dark:text-yellow-400 font-medium">
+                        Model not found
+                      </p>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        The model "{processModelName}" does not exist locally. Please download it from HuggingFace Hub first.
+                      </p>
+                    </div>
+                  </div>
+                  <Button
+                    onClick={handleDownloadProcessModel}
+                    disabled={isDownloadingProcessModel || isUploading || isUploaded}
+                    className="w-full"
+                    size="lg"
+                  >
+                    {isDownloadingProcessModel ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        Downloading...
+                      </>
+                    ) : (
+                      <>
+                        <Download className="w-4 h-4 mr-2" />
+                        Download Model
+                      </>
+                    )}
+                  </Button>
+                  {processModelDownloadSuccess && (
+                    <div className="flex items-center gap-2 text-sm text-green-500">
+                      <CheckCircle2 className="w-4 h-4" />
+                      <span>Model downloaded successfully!</span>
+                    </div>
+                  )}
+                  {processModelDownloadError && (
+                    <div className="text-sm text-red-500">
+                      {processModelDownloadError}
+                    </div>
+                  )}
+                </div>
+              )}
+              {processModelName && processModelExists === true && (
+                <div className="flex items-center gap-2 text-sm text-green-500">
+                  <CheckCircle2 className="w-4 h-4" />
+                  <span>Model is available</span>
+                </div>
+              )}
+            </div>
+
+            <div className="space-y-2">
               <Label htmlFor="file">Training File</Label>
               <div className="flex items-center gap-4">
                 <Input
@@ -261,7 +406,7 @@ export function FineTunePage({ models: _models, onJobCreate }: FineTunePageProps
             {!isUploaded && (
               <Button
                 onClick={handleFileUpload}
-                disabled={!trainingFile || isUploading}
+                disabled={!trainingFile || isUploading || !processModelName.trim() || processModelExists === false}
                 className="w-full"
                 size="lg"
               >

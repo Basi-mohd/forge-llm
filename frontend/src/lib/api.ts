@@ -42,8 +42,14 @@ export const apiService = {
     return response.data;
   },
 
+  getMergedModels: async () => {
+    const response = await api.get('/list-merged-models');
+    return response.data;
+  },
+
   processDocument: async (
     file: File,
+    modelName: string,
     onProgress?: (progress: number) => void,
     onPageProgress?: (currentPage: number, totalPages: number) => void
   ) => {
@@ -85,7 +91,6 @@ export const apiService = {
                     return;
                   }
                 } catch (e) {
-                  // Ignore JSON parse errors for incomplete chunks
                 }
               }
             }
@@ -106,7 +111,7 @@ export const apiService = {
           reject(new Error('Upload failed'));
         });
 
-        xhr.open('POST', `${API_BASE_URL}/process_doc`);
+        xhr.open('POST', `${API_BASE_URL}/process_doc?model_name=${encodeURIComponent(modelName)}`);
         xhr.send(formData);
       } catch (error) {
         reject(error);

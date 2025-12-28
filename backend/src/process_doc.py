@@ -1,4 +1,4 @@
-from fastapi import APIRouter, UploadFile, File, HTTPException
+from fastapi import APIRouter, UploadFile, File, HTTPException, Query
 from fastapi.responses import StreamingResponse
 from pypdf import PdfReader
 import json
@@ -52,9 +52,9 @@ async def process_document_stream(file: UploadFile,model_name: str):
 
 
 @router.post("/process_doc")
-async def upload_large_file(file: UploadFile = File(...)):
+async def upload_large_file(file: UploadFile = File(...), model_name: str = Query(...)):
     return StreamingResponse(
-        process_document_stream(file),
+        process_document_stream(file, model_name),
         media_type="text/event-stream",
         headers={
             "Cache-Control": "no-cache",

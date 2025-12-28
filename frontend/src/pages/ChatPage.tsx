@@ -1,6 +1,7 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ChatInterface } from '../components/ChatInterface';
 import { Chat, ChatMessage, FineTuneJob } from '../types';
+import { apiService } from '@/lib/api';
 
 interface ChatPageProps {
   chat: Chat | null;
@@ -20,12 +21,26 @@ export function ChatPage({
   onChatModelUpdate,
 }: ChatPageProps) {
   const messagesRef = useRef<ChatMessage[]>([]);
+  const [mergedModels, setMergedModels] = useState<string[]>([]);
 
   useEffect(() => {
     if (chat) {
       messagesRef.current = chat.messages;
     }
   }, [chat?.messages]);
+
+  useEffect(() => {
+    const fetchMergedModels = async () => {
+      try {
+        const response = await apiService.getMergedModels();
+        setMergedModels(response.models || []);
+      } catch (error) {
+        console.error('Error fetching merged models:', error);
+        setMergedModels([]);
+      }
+    };
+    fetchMergedModels();
+  }, []);
 
   const handleMessageAdd = (message: ChatMessage) => {
     if (chat) {
@@ -44,6 +59,7 @@ export function ChatPage({
 
   const currentModel = chat?.model || selectedModel;
   const fineTunedModels = Array.from(new Set(jobs.map(job => job.modelName)));
+  const allModels = Array.from(new Set([...fineTunedModels, ...mergedModels]));
 
   if (!chat) {
     return (
@@ -64,7 +80,7 @@ export function ChatPage({
     <ChatInterface
       messages={chat.messages}
       selectedModel={currentModel}
-      fineTunedModels={fineTunedModels}
+      fineTunedModels={allModels}
       onModelChange={handleModelChange}
       onMessageAdd={handleMessageAdd}
     />

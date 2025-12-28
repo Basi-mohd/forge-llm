@@ -5,6 +5,7 @@ from finetune import router as finetune_router
 from fileupload import router as fileupload_router
 from process_doc import router as process_doc_router
 from model import router as model_router
+from model_list import router as model_list_router
 
 
 app = FastAPI(title="FineTuner API", version="1.0.0")
@@ -22,6 +23,7 @@ app.include_router(finetune_router)
 app.include_router(fileupload_router)
 app.include_router(process_doc_router)
 app.include_router(model_router)
+app.include_router(model_list_router)
 
 
 @app.get("/")
